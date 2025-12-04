@@ -1,69 +1,33 @@
 import express, {Request, Response} from "express";
 import {Pool} from "pg";
-import dotenv from "dotenv";
-import path from "path";
+import config from "./config";
+import initDb, { pool } from "./config/db";
+import logger from "./middleware/logger";
+import { userRoutes } from "./modules/user/user.routes";
+import { todosRoutes } from "./modules/todo/todo.routes";
+import { authRouters } from "./modules/auth/auth.routes";
 
-dotenv.config({path: path.join(process.cwd(), ".env") })
+const app = express();
 
-const app = express()
-const port = 3000
-
-const pool = new Pool({
-  connectionString:
-   `${process.env.CONNECTION_STR}`
-});
-
-const initDb = async () => {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS users(
-      id SERIAL PRIMARY KEY,
-      name VARCHAR(100) NOT NULL,
-      email VARCHAR(150) UNIQUE NOT NULL,
-      age INT,
-      phone VARCHAR(15),
-      address TEXT,
-      created_at TIMESTAMP DEFAULT NOW(),
-      updated_at TIMESTAMP DEFAULT NOW()
-    )
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS todos(
-    id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id) ON DELETE CASCADE,
-    title VARCHAR(200) NOT NULL,
-    description TEXT,
-    completed BOOLEAN DEFAULT false,
-    due_date DATE,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-
-    )`)
-};
-
-
-
-
-initDb();
+const port = config.port;
 
 //parser
 app.use(express.json());
 // app.use(express.urlencoed());
 
+initDb();
 
-app.get('/', (req: Request, res: Response) => {
+
+app.get("/", logger, (req: Request, res: Response) => {
   res.send('Hello from developer')
 });
 
+app.use("/users", userRoutes);
 
-app.post("/", (req: Request, res: Response)=>{
-    console.log(req.body);
+app.use("/todos", todosRoutes)
 
-    res.status(200).json({
-        success: true,
-        message: "Api post hit"
-    })
-})
+app.use("/auth", authRouters);
+
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
